@@ -16,11 +16,11 @@ Todo lo siguiente se confirmó contra la documentación y el código fuente ofic
 ## Consecuencias de `network_mode: host` sobre el resto del stack
 
 1. **MariaDB publica `127.0.0.1:3306`** (además de seguir en `masivos-network`) — Postal no puede resolver `masivos-mariadb` por nombre de contenedor al no compartir esa red. Ver [`services/mariadb/docker-compose.yml`](../mariadb/docker-compose.yml).
-2. **Nginx (Sprint 9) necesitará una vía especial** para alcanzar el panel web de Postal en `127.0.0.1:5000` — se resuelve en ese sprint (`network_mode: host` también en Nginx, o `extra_hosts: host-gateway`), documentado como pendiente en `docs/architecture.md`.
+2. **Nginx (Sprint 9) alcanza el panel web de Postal vía `extra_hosts: host-gateway`.** Esto exigió corregir `WEB_SERVER_DEFAULT_BIND_ADDRESS` de `127.0.0.1` a `0.0.0.0` en este servicio (ver `.env.example`) — el mecanismo `host-gateway` solo funciona contra puertos bindeados a todas las interfaces, nunca contra loopback. La seguridad real la sigue dando UFW, que nunca abre el `5000` — ver [`services/nginx/README.md`](../nginx/README.md).
 
 ## Qué hace
 
-- `web`: panel web + API, bind por defecto en `127.0.0.1:5000` (nunca público directamente).
+- `web`: panel web + API en el puerto `5000`, todas las interfaces (nunca público directamente — solo alcanzable vía Nginx o `docker exec`; ver nota sobre UFW arriba).
 - `smtp`: servidor SMTP en el puerto `25`, todas las interfaces.
 - `worker`: procesa la cola de entrega (basada en `message_db`, no en un broker externo).
 - `runner`: servicio de un solo uso (`profile: tools`, no arranca con `up -d`) para comandos administrativos (`postal initialize`, `postal make-user`).

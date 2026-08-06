@@ -19,7 +19,7 @@ flowchart TB
 
     subgraph Host["Ubuntu 24.04 — servidor por entorno"]
         subgraph HostNet["Namespace de red del HOST (network_mode: host)"]
-            PostalWeb["masivos-postal-web\n127.0.0.1:5000"]
+            PostalWeb["masivos-postal-web\n0.0.0.0:5000"]
             PostalSMTP["masivos-postal-smtp\n:25 (todas las interfaces)"]
             PostalWorker["masivos-postal-worker"]
         end
@@ -42,7 +42,7 @@ flowchart TB
     MTA -->|SMTP 25| PostalSMTP
 
     Browser -->|HTTPS 443| Nginx
-    Nginx -->|proxy_pass a 127.0.0.1:5000\nvia host networking, ver nota| PostalWeb
+    Nginx -->|proxy_pass via extra_hosts host-gateway, ver nota| PostalWeb
     Nginx -->|proxy_pass| Graf
     Nginx -->|proxy_pass| Kuma
 
@@ -70,11 +70,11 @@ flowchart TB
 **Nota (Sprint 8):** verificado contra la plantilla `docker-compose` oficial de Postal que sus contenedores (`web`, `smtp`, `worker`) usan **`network_mode: host`**, no `masivos-network` — es el patrón soportado por el propio proyecto (permite que el contenedor SMTP bindee el puerto 25 vía `cap_add: NET_BIND_SERVICE` y que los tres procesos compartan namespace de red sin publicarse puertos entre sí). Esto tiene dos consecuencias que rompen con el patrón del resto del stack:
 
 1. **MariaDB publica `3306` en `127.0.0.1`** (además de seguir en `masivos-network`) para que Postal, en el namespace de red del host, pueda alcanzarlo — mismo patrón de bind a loopback que RabbitMQ (ver más abajo), aplicado aquí por necesidad técnica de conectividad, no solo para un panel de administración.
-2. **Nginx (Sprint 9) necesita una vía especial para alcanzar `127.0.0.1:5000`** (el panel web de Postal, que bindea loopback por defecto): o bien Nginx también corre en `network_mode: host`, o usa `extra_hosts: host-gateway` para resolver la IP del host desde `masivos-network`. Se decide en el Sprint 9, no aquí.
+2. **Nginx (Sprint 9) alcanza el panel web de Postal vía `extra_hosts: - "host.docker.internal:host-gateway"`** — Nginx permanece en `masivos-network` (no se propaga `network_mode: host` a más servicios; Grafana y Uptime Kuma, Sprints 10-11, seguirán en el bridge normal). Corrección importante descubierta al implementar esto: `host-gateway` solo alcanza puertos bindeados a **todas las interfaces** del host, nunca a `127.0.0.1` (loopback es inalcanzable desde cualquier otro namespace de red por definición). Por eso `WEB_SERVER_DEFAULT_BIND_ADDRESS` de Postal se corrigió de `127.0.0.1` a `0.0.0.0` en este sprint — la seguridad real la sigue dando UFW, que nunca abre el puerto `5000` (ver tabla de puertos), igual que ya ocurre con el puerto de MariaDB.
 
 ## Principio de diseño: SMTP nunca pasa por Nginx
 
-Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en el puerto 25 — el único puerto SMTP que Postal v3 expone (verificado contra su configuración de referencia; no existen listeners separados de submission/SMTPS en 587/465, a diferencia de lo que se asumió en el diseño original de este documento). Nginx únicamente termina TLS y enruta la superficie **HTTP** de Postal (panel web en `127.0.0.1:5000`) y de las herramientas de observabilidad expuestas al usuario (Grafana, Uptime Kuma). Nunca se debe intentar proxyar SMTP a través de Nginx `http {}` — requeriría `stream {}` y no aporta ningún beneficio frente a exponer el puerto directamente.
+Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en el puerto 25 — el único puerto SMTP que Postal v3 expone (verificado contra su configuración de referencia; no existen listeners separados de submission/SMTPS en 587/465, a diferencia de lo que se asumió en el diseño original de este documento). Nginx únicamente termina TLS y enruta la superficie **HTTP** de Postal (panel web en el puerto `5000`, alcanzado vía `extra_hosts: host-gateway`) y de las herramientas de observabilidad expuestas al usuario (Grafana, Uptime Kuma). Nunca se debe intentar proxyar SMTP a través de Nginx `http {}` — requeriría `stream {}` y no aporta ningún beneficio frente a exponer el puerto directamente.
 
 ## Puertos expuestos en el host
 
@@ -82,16 +82,18 @@ Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en el puerto 25 — 
 |---|---|---|---|
 | 22 (o puerto SSH custom) | sshd | Sí | Administración remota — se endurece en Sprint 2 |
 | 25 | Postal (`network_mode: host`) | Sí | Único puerto SMTP de Postal v3 (recepción y envío autenticado) — verificado en el Sprint 8; no existen 587/465 en Postal |
-| 80 | Nginx | Sí | Redirección a HTTPS + validación ACME HTTP-01 de respaldo |
+| 80 | Nginx | Sí | Redirección a HTTPS. La emisión de certificados usa DNS-01 (`certbot-dns-cloudflare`, ver `docs/dns.md`), no HTTP-01 — este puerto no sirve retos ACME, solo redirige |
 | 443 | Nginx | Sí | Único punto de entrada HTTPS |
 | 15672 (RabbitMQ management) | RabbitMQ | Solo `127.0.0.1` | Panel de administración, accesible únicamente vía túnel SSH (`ssh -L`) — ver [`services/rabbitmq/README.md`](../services/rabbitmq/README.md) |
 | 3306 (MariaDB) | MariaDB | Solo `127.0.0.1` | Postal (`network_mode: host`, Sprint 8) lo alcanza vía loopback — no es un panel de administración, es conectividad real necesaria |
-| 5000 (Postal web) | Postal (`network_mode: host`) | Solo `127.0.0.1` | Panel web/API de Postal; público solo a través del proxy de Nginx (Sprint 9) |
+| 5000 (Postal web) | Postal (`network_mode: host`) | Sí, pero solo alcanzable desde Nginx (`masivos-network`, vía `host-gateway`) o `localhost` — **no** desde Internet | UFW nunca abre el `5000`; el bind a `0.0.0.0` es necesario para que Nginx lo alcance vía la puerta de enlace del bridge, no para exponerlo públicamente (ver nota del Sprint 9 arriba) |
 | 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
 
 ### Bind a `127.0.0.1` para paneles de administración
 
-Algunos servicios internos (RabbitMQ, y potencialmente otros en el futuro) exponen un panel web de administración que un operador humano necesita ver, pero que no debe ser alcanzable desde Internet. El patrón es: publicar ese puerto **únicamente en `127.0.0.1`** (`127.0.0.1:<puerto>:<puerto>` en el `docker-compose.yml` del servicio), nunca en `0.0.0.0` ni sin especificar IP (que Docker interpreta como `0.0.0.0`). UFW nunca abre estos puertos — son inalcanzables desde fuera del propio host por definición del bind. El acceso operativo es vía `ssh -L <puerto>:127.0.0.1:<puerto>` (por eso `security/ssh/` mantiene `AllowTcpForwarding yes`, ver [`docs/security.md`](security.md)). Esto es distinto de "expuesto al host" en el sentido de la tabla anterior — ahí "Sí" significa alcanzable desde Internet a través de UFW; el bind a loopback nunca lo es.
+Algunos servicios internos (RabbitMQ, MariaDB) exponen un puerto que un operador humano o otro proceso del host necesita alcanzar, pero que no debe ser alcanzable desde Internet. El patrón es: publicar ese puerto **únicamente en `127.0.0.1`** (`127.0.0.1:<puerto>:<puerto>` en el `docker-compose.yml` del servicio), nunca en `0.0.0.0` ni sin especificar IP (que Docker interpreta como `0.0.0.0`). UFW nunca abre estos puertos — son inalcanzables desde fuera del propio host por definición del bind. El acceso operativo es vía `ssh -L <puerto>:127.0.0.1:<puerto>` (por eso `security/ssh/` mantiene `AllowTcpForwarding yes`, ver [`docs/security.md`](security.md)). Esto es distinto de "expuesto al host" en el sentido de la tabla anterior — ahí "Sí" significa alcanzable desde Internet a través de UFW; el bind a loopback nunca lo es.
+
+**Variante (Sprint 9): bind a `0.0.0.0` + UFW como barrera, cuando `127.0.0.1` no sirve.** El panel web de Postal necesita ser alcanzado por Nginx (otro contenedor, no un proceso del host) vía `extra_hosts: host-gateway` — un mecanismo que, a diferencia de `ssh -L`, no puede atravesar un bind a loopback. En ese caso el puerto se publica en `0.0.0.0`, y la exposición a Internet se previene exclusivamente con UFW (que nunca abre ese puerto). Es un patrón distinto al de arriba — mismo objetivo (nada de esto debe ser alcanzable desde fuera), mecanismo distinto según quién necesita alcanzarlo (un proceso SSH del operador vs. otro contenedor).
 
 ## Modelo de entornos
 

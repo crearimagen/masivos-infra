@@ -48,15 +48,16 @@ Sustituir `<DOMAIN_ROOT>` y `<SERVER_IP>` por los valores reales del entorno. Lo
 
 - **Zone : DNS : Edit**, restringido a la zona `<DOMAIN_ROOT>` del entorno correspondiente.
 
-Se genera en Cloudflare → *My Profile → API Tokens → Create Token → Edit zone DNS*. El token se guarda en `environments/<env>/.env` como `CLOUDFLARE_API_TOKEN` y **nunca se versiona** (cubierto por `.gitignore`). El script de emisión de certificados (`services/nginx/scripts/`, Sprint 8) lo consumirá para escribir el archivo de credenciales de certbot en tiempo de ejecución, con permisos `600`.
+Se genera en Cloudflare → *My Profile → API Tokens → Create Token → Edit zone DNS*. El token se guarda en `environments/<env>/.env` como `CLOUDFLARE_API_TOKEN` y **nunca se versiona** (cubierto por `.gitignore`).
 
-## Flujo de emisión (resumen — implementación en Sprint 8)
+## Flujo de emisión (implementado en el Sprint 9)
 
-1. `scripts/deploy.sh` carga `environments/<env>/.env`.
-2. Se genera `~/.secrets/cloudflare.ini` (permisos `600`, fuera del repo) con `dns_cloudflare_api_token = <valor>`.
-3. `certbot certonly --dns-cloudflare --dns-cloudflare-credentials ~/.secrets/cloudflare.ini -d <DOMAIN_ROOT> -d *.<DOMAIN_ROOT>`.
-4. El certificado resultante se monta en `masivos-nginx` vía volumen `masivos-nginx-data`.
-5. Renovación automática vía systemd timer (`certbot renew`), validada por `scripts/healthcheck.sh`.
+1. `services/nginx/scripts/generate-cloudflare-credentials.sh --environment <env>` carga `environments/<env>/.env` y genera `services/nginx/secrets/cloudflare.ini` (permisos `600`, dentro del repo pero excluido por `.gitignore` — no `~/.secrets/`, para mantener todo lo operativo de este servicio dentro de `services/nginx/`).
+2. `services/nginx/scripts/issue-certificate.sh --environment <env>` ejecuta `certbot certonly --dns-cloudflare --dns-cloudflare-credentials /secrets/cloudflare.ini -d <DOMAIN_ROOT> -d *.<DOMAIN_ROOT>` dentro del contenedor `certbot` (perfil `tools`, `services/nginx/docker-compose.yml`).
+3. El certificado se escribe en `services/nginx/ssl/` (bind mount compartido entre `certbot` y `nginx`).
+4. Renovación vía `services/nginx/scripts/renew-certificates.sh` (`certbot renew`, recarga Nginx solo si renovó algo). Programación por cron: pendiente de `scripts/` de orquestación general (Sprint 12); hasta entonces se ejecuta manualmente o con un cron propio del operador.
+
+Ver [`services/nginx/README.md`](../services/nginx/README.md) para el detalle operativo completo.
 
 ## Referencia cruzada
 

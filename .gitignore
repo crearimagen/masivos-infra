@@ -11,6 +11,16 @@ backups/*
 services/nginx/ssl/*
 !services/nginx/ssl/.gitkeep
 
+# Credenciales de Cloudflare para certbot-dns-cloudflare (secreto generado
+# en el servidor, nunca versionado)
+services/nginx/secrets/*
+!services/nginx/secrets/.gitkeep
+
+# Configuracion de Nginx renderizada desde plantillas (contiene el dominio
+# real del servidor; las plantillas .conf.template si se versionan)
+services/nginx/conf.d/*.conf
+!services/nginx/conf.d/00-upstreams.conf
+
 # Clave de firma de Postal (secreto generado en el servidor, nunca versionado)
 services/postal/config/signing.key
 

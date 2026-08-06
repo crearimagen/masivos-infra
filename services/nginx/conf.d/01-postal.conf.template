@@ -1,0 +1,33 @@
+# Generado por scripts/render-config.sh — NO editar a mano, edita este
+# .template y vuelve a ejecutar el script.
+#
+# No se usa el envsubst nativo de la imagen de nginx: sustituiria tambien
+# las variables propias de nginx (que usan la misma sintaxis $var, como
+# $remote_addr, $http_referer) y las romperia. Se usa sed, igual que
+# security/ssh/sshd-masivos.conf.template (Sprint 2).
+
+server {
+    listen 80;
+    server_name __POSTAL_WEB_HOSTNAME__;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name __POSTAL_WEB_HOSTNAME__;
+
+    ssl_certificate     /etc/letsencrypt/live/__DOMAIN_ROOT__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMAIN_ROOT__/privkey.pem;
+
+    location /users/sign_in {
+        limit_req zone=masivos_login burst=5 nodelay;
+        proxy_pass http://postal_web;
+        include /etc/nginx/conf.d/_postal_proxy_headers.inc;
+    }
+
+    location / {
+        proxy_pass http://postal_web;
+        include /etc/nginx/conf.d/_postal_proxy_headers.inc;
+    }
+}
