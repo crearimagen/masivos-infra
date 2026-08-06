@@ -4,7 +4,7 @@ Decisiones de hardening aplicadas por `security/hardening.sh`. Para el detalle o
 
 ## Modelo de amenaza
 
-El servidor expone directamente a Internet: SSH (`SSH_PORT`), SMTP (`25/587/465`) y HTTPS (`80/443`). Todo lo demás (Postgres, RabbitMQ, Redis, Prometheus, Loki) vive exclusivamente dentro de `masivos-network` — ver [`docs/architecture.md`](architecture.md#puertos-expuestos-en-el-host). El hardening de este documento asume que el vector principal de ataque son esos cinco puertos públicos, más las cuentas SMTP de Postal (Sprint 7).
+El servidor expone directamente a Internet: SSH (`SSH_PORT`), SMTP (`25` — único puerto SMTP de Postal v3, verificado en el Sprint 8; no existen 587/465) y HTTPS (`80/443`). Todo lo demás (MariaDB, Postgres, RabbitMQ, Redis, Prometheus, Loki, y el panel web de Postal en `127.0.0.1:5000`) vive exclusivamente dentro de `masivos-network` o en loopback — ver [`docs/architecture.md`](architecture.md#puertos-expuestos-en-el-host). El hardening de este documento asume que el vector principal de ataque son esos cuatro puertos públicos, más las cuentas SMTP de Postal (Sprint 8).
 
 ## SSH
 

@@ -1,0 +1,15 @@
+# services/postal/config/postal.yml
+# Deliberadamente minimo. Postal soporta configurar CUALQUIER clave de este
+# archivo via variable de entorno (ver
+# https://github.com/postalserver/postal/blob/main/doc/config/environment-variables.md),
+# y todo lo que este servicio necesita ya esta en .env (ver .env.example) -
+# consistente con el patron del resto del repositorio (.env por servicio,
+# nada de secretos en archivos versionados).
+#
+# Este archivo existe porque el binario de Postal espera poder leer
+# /config/postal.yml (aunque sea minimo) - no se ha podido verificar en un
+# despliegue real si un archivo vacio es aceptado o si falla; se deja este
+# archivo presente para no correr ese riesgo en el primer despliegue. Si en
+# el primer despliegue real se confirma que no hace falta, se puede eliminar
+# esta nota y dejarlo vacio de verdad.
+{}

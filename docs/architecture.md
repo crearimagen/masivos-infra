@@ -18,17 +18,15 @@ flowchart TB
     end
 
     subgraph Host["Ubuntu 24.04 — servidor por entorno"]
-        subgraph Edge["Puertos expuestos al host"]
-            P25[":25 SMTP"]
-            P587[":587 Submission"]
-            P443[":443 HTTPS"]
-            P80[":80 HTTP→HTTPS"]
+        subgraph HostNet["Namespace de red del HOST (network_mode: host)"]
+            PostalWeb["masivos-postal-web\n127.0.0.1:5000"]
+            PostalSMTP["masivos-postal-smtp\n:25 (todas las interfaces)"]
+            PostalWorker["masivos-postal-worker"]
         end
 
-        subgraph net["Docker network: masivos-network"]
-            Postal["masivos-postal\n(SMTP + Web + API)"]
+        subgraph net["Docker network: masivos-network (bridge)"]
             Nginx["masivos-nginx\n(TLS termination, reverse proxy HTTP)"]
-            MariaDB["masivos-mariadb\n(main_db + message_db de Postal)"]
+            MariaDB["masivos-mariadb\n(main_db + message_db de Postal)\n127.0.0.1:3306 publicado"]
             PG["masivos-postgres\n(infra general, no consumido por Postal)"]
             RMQ["masivos-rabbitmq\n(infra general, no consumido por Postal)"]
             Redis["masivos-redis\n(infra general, no consumido por Postal)"]
@@ -41,21 +39,18 @@ flowchart TB
         Vols[(Named volumes\nmasivos-*-data)]
     end
 
-    MTA -->|SMTP 25/587| P25
-    MTA --> P587
-    P25 --> Postal
-    P587 --> Postal
+    MTA -->|SMTP 25| PostalSMTP
 
-    Browser -->|HTTPS| P443
-    P80 --> P443
-    P443 --> Nginx
-    Nginx -->|proxy_pass HTTP interno| Postal
+    Browser -->|HTTPS 443| Nginx
+    Nginx -->|proxy_pass a 127.0.0.1:5000\nvia host networking, ver nota| PostalWeb
     Nginx -->|proxy_pass| Graf
     Nginx -->|proxy_pass| Kuma
 
-    Postal --> MariaDB
+    PostalWeb -->|127.0.0.1:3306| MariaDB
+    PostalSMTP -->|127.0.0.1:3306| MariaDB
+    PostalWorker -->|127.0.0.1:3306| MariaDB
 
-    Prom -->|scrape /metrics| Postal
+    Prom -->|scrape /metrics| PostalWeb
     Prom --> MariaDB
     Prom --> PG
     Prom --> RMQ
@@ -67,27 +62,32 @@ flowchart TB
     PG -.-> Vols
     RMQ -.-> Vols
     Redis -.-> Vols
-    Postal -.-> Vols
+    PostalWeb -.-> Vols
 ```
 
-**Nota (Sprint 7):** verificado contra la documentación oficial de Postal que **Postal v3 requiere MariaDB** (no Postgres) y **no usa RabbitMQ ni Redis** — ver la nota completa en la sección de Modelo de volúmenes y en [`services/mariadb/README.md`](../services/mariadb/README.md). Postgres, RabbitMQ y Redis se conservan en el repositorio como infraestructura genérica reutilizable para necesidades futuras; el diagrama ya no dibuja una flecha de Postal hacia ellos porque no la hay.
+**Nota (Sprint 7):** verificado contra la documentación oficial de Postal que **Postal v3 requiere MariaDB** (no Postgres) y **no usa RabbitMQ ni Redis** — ver [`services/mariadb/README.md`](../services/mariadb/README.md). Postgres, RabbitMQ y Redis se conservan en el repositorio como infraestructura genérica reutilizable para necesidades futuras.
+
+**Nota (Sprint 8):** verificado contra la plantilla `docker-compose` oficial de Postal que sus contenedores (`web`, `smtp`, `worker`) usan **`network_mode: host`**, no `masivos-network` — es el patrón soportado por el propio proyecto (permite que el contenedor SMTP bindee el puerto 25 vía `cap_add: NET_BIND_SERVICE` y que los tres procesos compartan namespace de red sin publicarse puertos entre sí). Esto tiene dos consecuencias que rompen con el patrón del resto del stack:
+
+1. **MariaDB publica `3306` en `127.0.0.1`** (además de seguir en `masivos-network`) para que Postal, en el namespace de red del host, pueda alcanzarlo — mismo patrón de bind a loopback que RabbitMQ (ver más abajo), aplicado aquí por necesidad técnica de conectividad, no solo para un panel de administración.
+2. **Nginx (Sprint 9) necesita una vía especial para alcanzar `127.0.0.1:5000`** (el panel web de Postal, que bindea loopback por defecto): o bien Nginx también corre en `network_mode: host`, o usa `extra_hosts: host-gateway` para resolver la IP del host desde `masivos-network`. Se decide en el Sprint 9, no aquí.
 
 ## Principio de diseño: SMTP nunca pasa por Nginx
 
-Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en los puertos 25, 587 y 465. Nginx únicamente termina TLS y enruta las superficies **HTTP** de Postal (panel web, API REST, tracking de aperturas/clicks, webhooks) y de las herramientas de observabilidad expuestas al usuario (Grafana, Uptime Kuma). Nunca se debe intentar proxyar SMTP a través de Nginx `http {}` — requeriría `stream {}` y no aporta ningún beneficio frente a exponer el puerto directamente desde el contenedor de Postal.
+Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en el puerto 25 — el único puerto SMTP que Postal v3 expone (verificado contra su configuración de referencia; no existen listeners separados de submission/SMTPS en 587/465, a diferencia de lo que se asumió en el diseño original de este documento). Nginx únicamente termina TLS y enruta la superficie **HTTP** de Postal (panel web en `127.0.0.1:5000`) y de las herramientas de observabilidad expuestas al usuario (Grafana, Uptime Kuma). Nunca se debe intentar proxyar SMTP a través de Nginx `http {}` — requeriría `stream {}` y no aporta ningún beneficio frente a exponer el puerto directamente.
 
 ## Puertos expuestos en el host
 
 | Puerto | Servicio | Expuesto | Motivo |
 |---|---|---|---|
 | 22 (o puerto SSH custom) | sshd | Sí | Administración remota — se endurece en Sprint 2 |
-| 25 | Postal | Sí | Recepción SMTP entrante |
-| 587 | Postal | Sí | Submission (envío autenticado) |
-| 465 | Postal | Sí | SMTPS legado, algunos clientes lo requieren |
+| 25 | Postal (`network_mode: host`) | Sí | Único puerto SMTP de Postal v3 (recepción y envío autenticado) — verificado en el Sprint 8; no existen 587/465 en Postal |
 | 80 | Nginx | Sí | Redirección a HTTPS + validación ACME HTTP-01 de respaldo |
 | 443 | Nginx | Sí | Único punto de entrada HTTPS |
 | 15672 (RabbitMQ management) | RabbitMQ | Solo `127.0.0.1` | Panel de administración, accesible únicamente vía túnel SSH (`ssh -L`) — ver [`services/rabbitmq/README.md`](../services/rabbitmq/README.md) |
-| 3306 (MariaDB), 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
+| 3306 (MariaDB) | MariaDB | Solo `127.0.0.1` | Postal (`network_mode: host`, Sprint 8) lo alcanza vía loopback — no es un panel de administración, es conectividad real necesaria |
+| 5000 (Postal web) | Postal (`network_mode: host`) | Solo `127.0.0.1` | Panel web/API de Postal; público solo a través del proxy de Nginx (Sprint 9) |
+| 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
 
 ### Bind a `127.0.0.1` para paneles de administración
 
@@ -104,6 +104,7 @@ Justificación: aislar el blast radius. Un incidente de carga o de seguridad en 
 - Red única `masivos-network` (bridge, definida explícitamente con subnet fija — se implementa en `docker/networks.sh`, Sprint 3 — para evitar colisiones con el rango por defecto de Docker).
 - Todos los contenedores se resuelven entre sí por nombre (`masivos-postgres`, `masivos-redis`, etc.), sin depender de IPs.
 - Ningún servicio de datos (Postgres, RabbitMQ, Redis) publica puertos al host.
+- **Excepción: Postal (Sprint 8) no está en `masivos-network`.** Sus contenedores usan `network_mode: host`, siguiendo la plantilla oficial del proyecto — ver la nota completa en el diagrama de arquitectura, arriba.
 
 ## Modelo de volúmenes
 

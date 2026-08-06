@@ -16,7 +16,9 @@ usage() {
 Uso: $(basename "$0") --environment <dev|test|prod>
 
 Instala ufw si falta, configura politica deny-incoming/allow-outgoing,
-abre SSH_PORT, 25, 587, 465, 80, 443, y habilita ufw. Idempotente.
+abre SSH_PORT, 25, 80, 443, y habilita ufw. Idempotente. Postal v3 solo
+usa el puerto 25 para SMTP (verificado en el Sprint 8) - no se abren
+587/465, que Postal no expone.
 EOF
 }
 
@@ -45,7 +47,8 @@ if [[ -z "${SSH_PORT:-}" ]]; then
 fi
 
 # Puertos HTTP/SMTP fijos segun docs/architecture.md — no dependen del entorno.
-readonly TCP_PORTS=("$SSH_PORT" 25 587 465 80 443)
+# Postal v3 solo expone el puerto 25 para SMTP (verificado en el Sprint 8).
+readonly TCP_PORTS=("$SSH_PORT" 25 80 443)
 
 ensure_ufw_installed() {
   if command_exists ufw; then

@@ -16,7 +16,7 @@ Fuentes: [Pre-requisites — Postal docs](https://docs.postalserver.io/getting-s
 
 ## Qué hace
 
-- MariaDB 11.4, sin puertos publicados al host — solo alcanzable desde `masivos-network`.
+- MariaDB 11.4, en `masivos-network` como el resto de servicios de datos, **más un puerto publicado en `127.0.0.1:3306`** (Sprint 8): Postal corre con `network_mode: host` (patrón oficial del proyecto, ver [`services/postal/README.md`](../postal/README.md)) y no puede resolver `masivos-mariadb` por nombre de contenedor — llega por loopback. Nunca se publica en `0.0.0.0`.
 - `init/00-create-postal-user.sh` crea un usuario dedicado (`POSTAL_DB_USER`) con privilegios sobre cualquier base de datos que empiece con `POSTAL_DB_PREFIX` — **no un solo nombre de base fijo**, porque Postal aprovisiona automáticamente una base de datos nueva (`message_db`) por cada "mail server" que se crea dentro de él, además de su `main_db`. El usuario necesita poder crear y borrar esas bases dinámicamente (requisito explícito de la documentación de Postal).
 - `config/masivos.cnf`: `innodb_redo_log_capacity` fijado con margen amplio sobre el mínimo que Postal exige (10× el tamaño máximo de mensaje configurado — ver comentarios en el archivo), charset `utf8mb4`.
 - Healthcheck vía `mariadb-admin ping`.

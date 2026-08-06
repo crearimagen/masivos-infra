@@ -1,0 +1,18 @@
+# services/postal/templates/dns-records.txt
+# Plantilla de referencia: registros DNS a configurar en Cloudflare para
+# que este servicio funcione, una vez completado services/postal/.env.
+# Sustituye los placeholders __ENTRE_GUIONES_BAJOS__ por los valores reales
+# de tu .env. Ver docs/dns.md para el detalle de cada registro y por que
+# deben quedar en "DNS only" (nube gris), nunca proxied.
+#
+# El valor exacto del registro DKIM (psrp._domainkey...) lo genera Postal al
+# crear el primer "mail server" en el panel web - no se puede conocer de
+# antemano, se obtiene ahi despues de la instalacion.
+
+A      __POSTAL_SMTP_HOSTNAME__              __SERVER_PUBLIC_IP__
+A      __POSTAL_WEB_HOSTNAME__                __SERVER_PUBLIC_IP__
+MX     __DOMAIN_ROOT__                        __DNS_MX_RECORDS__ (prioridad 10)
+TXT    __DOMAIN_ROOT__                        "v=spf1 a mx include:__DNS_SPF_INCLUDE__ ~all"
+TXT    __DNS_TRACK_DOMAIN__                   (ver panel de Postal tras crear el mail server)
+CNAME  __DNS_RETURN_PATH_DOMAIN__             __POSTAL_SMTP_HOSTNAME__
+TXT    psrp._domainkey.__DOMAIN_ROOT__        (generado por Postal, ver panel web)

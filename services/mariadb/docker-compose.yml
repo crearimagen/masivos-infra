@@ -21,6 +21,14 @@ services:
       - masivos-mariadb-data:/var/lib/mysql
       - ./init:/docker-entrypoint-initdb.d:ro
       - ./config/masivos.cnf:/etc/mysql/conf.d/masivos.cnf:ro
+    ports:
+      # Publicado SOLO en loopback (Sprint 8): Postal corre con
+      # network_mode: host (patron oficial del proyecto Postal, ver
+      # services/postal/README.md) y por lo tanto NO puede resolver
+      # "masivos-mariadb" por nombre de contenedor via masivos-network -
+      # necesita alcanzar este puerto por 127.0.0.1. NUNCA cambiar a
+      # "0.0.0.0:3306:3306" - expondria la base de datos a Internet.
+      - "127.0.0.1:3306:3306"
     networks:
       - masivos-network
     healthcheck:
