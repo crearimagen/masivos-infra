@@ -9,7 +9,7 @@ Instala Docker Engine, configura el daemon para producción, y crea la red y los
 | `install.sh` | Instala Docker Engine desde el repo oficial, aplica `daemon.json`, agrega `DEPLOY_USER` al grupo `docker`, ejecuta `networks.sh` y `volumes.sh`. |
 | `daemon.json` | Configuración de producción: logging con rotación, `live-restore`, `userland-proxy: false`, ulimits altos. |
 | `networks.sh` | Crea `masivos-network` (bridge) con la subnet de `DOCKER_NETWORK_SUBNET`. |
-| `volumes.sh` | Crea los 5 volúmenes nombrados (`masivos-postgres-data`, etc.). |
+| `volumes.sh` | Crea los 6 volúmenes nombrados (`masivos-mariadb-data`, `masivos-postgres-data`, etc.). |
 | `validate.sh` | Verifica (sin modificar nada) que todo lo anterior esté correctamente aplicado. |
 | `compose/` | Compose principal que agrega los `docker-compose.yml` de `services/*` vía `include:`. |
 

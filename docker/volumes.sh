@@ -14,8 +14,8 @@ usage() {
 Uso: $(basename "$0") --environment <dev|test|prod>
 
 Crea los volumenes Docker nombrados definidos en docs/architecture.md
-(masivos-postgres-data, masivos-rabbitmq-data, masivos-redis-data,
-masivos-postal-data, masivos-nginx-data). Idempotente.
+(masivos-mariadb-data, masivos-postgres-data, masivos-rabbitmq-data,
+masivos-redis-data, masivos-postal-data, masivos-nginx-data). Idempotente.
 EOF
 }
 
@@ -43,6 +43,7 @@ if ! command_exists docker; then
 fi
 
 readonly VOLUMES=(
+  masivos-mariadb-data
   masivos-postgres-data
   masivos-rabbitmq-data
   masivos-redis-data

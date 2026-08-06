@@ -5,8 +5,10 @@
 #
 # La lista de "include" crece a medida que cada servicio se completa en su
 # propio sprint. No incluir aqui un servicio cuyo docker-compose.yml todavia
-# no este implementado (services/grafana, services/prometheus, services/loki
-# y services/uptime-kuma se agregan en los Sprints 9-10).
+# no este implementado. services/postal y services/nginx AUN NO estan
+# implementados (siguen siendo el placeholder del scaffolding inicial) y se
+# agregan en los Sprints 8 y 9 respectivamente — no estaban excluidos
+# correctamente antes del Sprint 7, se corrige aqui.
 #
 # Uso: docker compose --env-file ../../environments/<env>/.env -f docker-compose.yml up -d
 
@@ -17,6 +19,8 @@ networks:
     external: true
 
 volumes:
+  masivos-mariadb-data:
+    external: true
   masivos-postgres-data:
     external: true
   masivos-rabbitmq-data:
@@ -29,8 +33,7 @@ volumes:
     external: true
 
 include:
+  - ../../services/mariadb/docker-compose.yml
   - ../../services/postgres/docker-compose.yml
   - ../../services/rabbitmq/docker-compose.yml
   - ../../services/redis/docker-compose.yml
-  - ../../services/postal/docker-compose.yml
-  - ../../services/nginx/docker-compose.yml

@@ -25,12 +25,13 @@ Procedimiento de restauración de `masivos-infra`. Cada servicio con backup impl
 
 | Servicio | Estado | Sprint |
 |---|---|---|
-| `postgres` | Implementado (`pg_restore --clean --if-exists`) | 4 |
-| `rabbitmq`, `redis`, `postal` | Pendiente, junto con su backup respectivo | 5-7 |
+| `mariadb` | Implementado (SQL restaurado vía `mariadb` client) — base de datos real de Postal | 7 |
+| `postgres` | Implementado (`pg_restore --clean --if-exists`) — infraestructura general | 4 |
+| `rabbitmq`, `redis`, `postal` | Pendiente, junto con su backup respectivo | 5-6, 8 |
 
 ## Orquestación
 
-`scripts/restore.sh` (Sprint 11) envolverá los `restore-*.sh` de cada servicio para restauraciones completas del stack. Hasta entonces, cada uno se ejecuta de forma independiente.
+`scripts/restore.sh` (Sprint 12) envolverá los `restore-*.sh` de cada servicio para restauraciones completas del stack. Hasta entonces, cada uno se ejecuta de forma independiente.
 
 ## Referencia cruzada
 

@@ -19,14 +19,15 @@ Estrategia de respaldo de `masivos-infra`. Cada servicio con estado propio (base
 
 | Servicio | Estado | Sprint |
 |---|---|---|
-| `postgres` | Implementado (`pg_dump -Fc`) | 4 |
-| `rabbitmq` | Pendiente — evaluar si las colas necesitan backup o son transitorias por diseño | 6 |
-| `redis` | Pendiente — probablemente solo caché, sin necesidad de backup | 5 |
-| `postal` | Pendiente — datos de configuración y mensajes | 7 |
+| `mariadb` | Implementado (`mariadb-dump --all-databases`) — base de datos real de Postal | 7 |
+| `postgres` | Implementado (`pg_dump -Fc`) — infraestructura general, no usado por Postal | 4 |
+| `rabbitmq` | Pendiente — infraestructura general, no usado por Postal; evaluar si aplica en el futuro | 6 |
+| `redis` | Pendiente — infraestructura general, no usado por Postal; evaluar si aplica en el futuro | 5 |
+| `postal` | Pendiente — datos de configuración propios del contenedor (`masivos-postal-data`) | 8 |
 
 ## Orquestación
 
-`scripts/backup.sh` (Sprint 11) ejecutará el backup de todos los servicios con estado en un solo comando, para uso en cron. Hasta entonces, cada `backup-*.sh` de servicio se ejecuta de forma independiente.
+`scripts/backup.sh` (Sprint 12) ejecutará el backup de todos los servicios con estado en un solo comando, para uso en cron. Hasta entonces, cada `backup-*.sh` de servicio se ejecuta de forma independiente.
 
 ## Referencia cruzada
 

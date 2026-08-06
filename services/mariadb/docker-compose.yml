@@ -1,0 +1,46 @@
+# services/mariadb/docker-compose.yml — servicio MariaDB independiente.
+# Base de datos real que usa Postal (main_db + message_db), verificado
+# contra la documentacion oficial de Postal v3 (ver README.md de este
+# servicio). Ejecutable por si solo:
+#   docker compose --env-file .env -f services/mariadb/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-mariadb-data (docker/networks.sh y docker/volumes.sh).
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: masivos-mariadb
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - masivos-mariadb-data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./config/masivos.cnf:/etc/mysql/conf.d/masivos.cnf:ro
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -uroot -p\"$$MARIADB_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${MARIADB_CPU_LIMIT:-2}"
+          memory: "${MARIADB_MEMORY_LIMIT:-1g}"
+        reservations:
+          memory: "${MARIADB_MEMORY_RESERVATION:-256m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-mariadb-data:
+    external: true

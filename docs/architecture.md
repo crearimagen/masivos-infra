@@ -28,9 +28,10 @@ flowchart TB
         subgraph net["Docker network: masivos-network"]
             Postal["masivos-postal\n(SMTP + Web + API)"]
             Nginx["masivos-nginx\n(TLS termination, reverse proxy HTTP)"]
-            PG["masivos-postgres"]
-            RMQ["masivos-rabbitmq"]
-            Redis["masivos-redis"]
+            MariaDB["masivos-mariadb\n(main_db + message_db de Postal)"]
+            PG["masivos-postgres\n(infra general, no consumido por Postal)"]
+            RMQ["masivos-rabbitmq\n(infra general, no consumido por Postal)"]
+            Redis["masivos-redis\n(infra general, no consumido por Postal)"]
             Prom["masivos-prometheus"]
             Graf["masivos-grafana"]
             Loki["masivos-loki"]
@@ -52,22 +53,24 @@ flowchart TB
     Nginx -->|proxy_pass| Graf
     Nginx -->|proxy_pass| Kuma
 
-    Postal --> PG
-    Postal --> RMQ
-    Postal --> Redis
+    Postal --> MariaDB
 
     Prom -->|scrape /metrics| Postal
+    Prom --> MariaDB
     Prom --> PG
     Prom --> RMQ
     Prom --> Nginx
     Graf --> Prom
     Graf --> Loki
 
+    MariaDB -.-> Vols
     PG -.-> Vols
     RMQ -.-> Vols
     Redis -.-> Vols
     Postal -.-> Vols
 ```
+
+**Nota (Sprint 7):** verificado contra la documentación oficial de Postal que **Postal v3 requiere MariaDB** (no Postgres) y **no usa RabbitMQ ni Redis** — ver la nota completa en la sección de Modelo de volúmenes y en [`services/mariadb/README.md`](../services/mariadb/README.md). Postgres, RabbitMQ y Redis se conservan en el repositorio como infraestructura genérica reutilizable para necesidades futuras; el diagrama ya no dibuja una flecha de Postal hacia ellos porque no la hay.
 
 ## Principio de diseño: SMTP nunca pasa por Nginx
 
@@ -84,7 +87,7 @@ Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en los puertos 25, 5
 | 80 | Nginx | Sí | Redirección a HTTPS + validación ACME HTTP-01 de respaldo |
 | 443 | Nginx | Sí | Único punto de entrada HTTPS |
 | 15672 (RabbitMQ management) | RabbitMQ | Solo `127.0.0.1` | Panel de administración, accesible únicamente vía túnel SSH (`ssh -L`) — ver [`services/rabbitmq/README.md`](../services/rabbitmq/README.md) |
-| 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
+| 3306 (MariaDB), 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
 
 ### Bind a `127.0.0.1` para paneles de administración
 
@@ -106,13 +109,16 @@ Justificación: aislar el blast radius. Un incidente de carga o de seguridad en 
 
 Volúmenes Docker nombrados (no bind mounts para datos, salvo configuración):
 
+- `masivos-mariadb-data` — base de datos real de Postal (`main_db` + `message_db`), añadido en el Sprint 7
 - `masivos-postgres-data`
 - `masivos-rabbitmq-data`
 - `masivos-redis-data`
 - `masivos-postal-data`
 - `masivos-nginx-data`
 
-Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3).
+Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3; `masivos-mariadb-data` añadido en el Sprint 7).
+
+**Por qué Postgres/Redis/RabbitMQ siguen aquí si Postal no los usa:** se construyeron (Sprints 4-6) siguiendo el stack originalmente solicitado, antes de verificar contra la documentación oficial de Postal que v3 no los requiere (solo MariaDB — ver [`services/mariadb/README.md`](../services/mariadb/README.md)). Se conservan como infraestructura genérica de la plataforma, disponible para necesidades futuras que no sean Postal (caché de aplicación, colas de trabajos propios, analítica), no como componentes huérfanos.
 
 ## Convenciones de nombres
 
@@ -151,12 +157,13 @@ Ver seguimiento en `CHANGELOG.md`. Orden de implementación:
 1. `bootstrap/` — provisión base Ubuntu 24.04
 2. `security/` — hardening (SSH, UFW, Fail2Ban, sysctl, logrotate)
 3. `docker/` — Docker Engine, red, volúmenes, compose principal
-4. `services/postgres/`
-5. `services/redis/`
-6. `services/rabbitmq/`
-7. `services/postal/`
-8. `services/nginx/` + Let's Encrypt
-9. `services/prometheus/`, `services/grafana/`, `services/loki/`
-10. `services/uptime-kuma/`
-11. `scripts/` de orquestación (deploy, backup, restore, healthcheck, validate)
-12. `.github/workflows/` — CI/CD
+4. `services/postgres/` — infra general (Postal no lo usa, ver Sprint 7)
+5. `services/redis/` — infra general (Postal no lo usa, ver Sprint 7)
+6. `services/rabbitmq/` — infra general (Postal no lo usa, ver Sprint 7)
+7. `services/mariadb/` — base de datos real de Postal (verificado contra la documentación oficial)
+8. `services/postal/`
+9. `services/nginx/` + Let's Encrypt
+10. `services/prometheus/`, `services/grafana/`, `services/loki/`
+11. `services/uptime-kuma/`
+12. `scripts/` de orquestación (deploy, backup, restore, healthcheck, validate)
+13. `.github/workflows/` — CI/CD

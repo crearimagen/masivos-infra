@@ -16,7 +16,7 @@ Uso: $(basename "$0") --environment <dev|test|prod>
 
 Valida (sin modificar nada) que docker/install.sh se aplico
 correctamente: daemon activo, daemon.json aplicado, red
-masivos-network con la subnet esperada, los 5 volumenes nombrados, y
+masivos-network con la subnet esperada, los 6 volumenes nombrados, y
 DEPLOY_USER en el grupo docker. Exit 0 si todo pasa, 1 si algo falla.
 EOF
 }
@@ -39,6 +39,7 @@ fi
 load_environment_file "$ENVIRONMENT" "$REPO_ROOT"
 
 readonly VOLUMES=(
+  masivos-mariadb-data
   masivos-postgres-data
   masivos-rabbitmq-data
   masivos-redis-data

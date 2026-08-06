@@ -1,0 +1,38 @@
+# services/mariadb/config/masivos.cnf
+# Overrides de produccion para el MariaDB de Postal. Montado en
+# /etc/mysql/conf.d/masivos.cnf (solo lectura) — la imagen oficial de
+# MariaDB incluye automaticamente todo lo que este en conf.d/ junto a su
+# configuracion base, no hace falta reemplazarla por completo (a diferencia
+# del enfoque usado en services/postgres/, cuya imagen no ofrece un
+# mecanismo conf.d equivalente).
+#
+# Sizing de referencia: servidor con 4 GB de RAM (ver docs/architecture.md).
+# Reajustar innodb_buffer_pool_size si el servidor de destino tiene otro
+# tamano.
+
+[mysqld]
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+skip-name-resolve
+
+# --- InnoDB / redo log ---
+# Postal exige que la capacidad del redo log sea al menos 10x el tamano
+# maximo de mensaje configurado (smtp_server.max_message_size en postal.yml,
+# 14 MB por defecto -> minimo ~140 MB). innodb_redo_log_capacity es el
+# parametro moderno (MariaDB 10.8+) que reemplaza a
+# innodb_log_file_size/innodb_log_files_in_group. 1G da margen amplio.
+innodb_redo_log_capacity = 1G
+innodb_buffer_pool_size = 512M
+innodb_flush_log_at_trx_commit = 1
+innodb_file_per_table = 1
+
+# --- Conexiones ---
+max_connections = 150
+
+# --- Logging ---
+# stdout/stderr, capturado por el log driver de Docker (docker/daemon.json
+# ya rota estos logs).
+slow_query_log = 1
+slow_query_log_file = /dev/stderr
+long_query_time = 1
+log_error = /dev/stderr
