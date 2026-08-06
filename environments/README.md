@@ -27,6 +27,8 @@ cp environments/prod/.env.example environments/prod/.env
 | `CLOUDFLARE_API_TOKEN` | Token con scope `Zone:DNS:Edit` sobre `DOMAIN_ROOT` — ver [`docs/dns.md`](../docs/dns.md) |
 | `TIMEZONE` | Timezone del servidor, formato IANA (p.ej. `America/El_Salvador`) |
 | `DOCKER_NETWORK_SUBNET` | Subnet fija para `masivos-network` (evita colisiones con el rango por defecto de Docker) |
+| `DEPLOY_USER` | Usuario no-root de despliegue creado por `bootstrap/users.sh` (p.ej. `deploy`) |
+| `DEPLOY_USER_SSH_PUBLIC_KEY` | Clave pública SSH que tendrá acceso como `DEPLOY_USER` |
 
 ## Referencia cruzada
 
