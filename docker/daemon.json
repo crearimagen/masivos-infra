@@ -1,1 +1,20 @@
-{}
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "5"
+  },
+  "live-restore": true,
+  "storage-driver": "overlay2",
+  "userland-proxy": false,
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Hard": 65536,
+      "Soft": 65536
+    }
+  },
+  "features": {
+    "buildkit": true
+  }
+}

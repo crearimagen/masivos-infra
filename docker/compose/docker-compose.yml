@@ -1,0 +1,36 @@
+# docker/compose/docker-compose.yml — compose principal que orquesta todos
+# los servicios de services/*. Cada servicio sigue siendo un compose
+# independiente y ejecutable por si solo (docker compose -f
+# services/<nombre>/docker-compose.yml up).
+#
+# La lista de "include" crece a medida que cada servicio se completa en su
+# propio sprint. No incluir aqui un servicio cuyo docker-compose.yml todavia
+# no este implementado (services/grafana, services/prometheus, services/loki
+# y services/uptime-kuma se agregan en los Sprints 9-10).
+#
+# Uso: docker compose --env-file ../../environments/<env>/.env -f docker-compose.yml up -d
+
+name: masivos
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-postgres-data:
+    external: true
+  masivos-rabbitmq-data:
+    external: true
+  masivos-redis-data:
+    external: true
+  masivos-postal-data:
+    external: true
+  masivos-nginx-data:
+    external: true
+
+include:
+  - ../../services/postgres/docker-compose.yml
+  - ../../services/rabbitmq/docker-compose.yml
+  - ../../services/redis/docker-compose.yml
+  - ../../services/postal/docker-compose.yml
+  - ../../services/nginx/docker-compose.yml
