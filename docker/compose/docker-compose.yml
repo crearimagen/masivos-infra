@@ -5,8 +5,7 @@
 #
 # La lista de "include" crece a medida que cada servicio se completa en su
 # propio sprint. No incluir aqui un servicio cuyo docker-compose.yml todavia
-# no este implementado. grafana, prometheus, loki y uptime-kuma se agregan
-# en los Sprints 10-11, cuando existan.
+# no este implementado. uptime-kuma se agrega en el Sprint 11, cuando exista.
 #
 # NOTA (Sprint 9): services/postal no esta en masivos-network
 # (network_mode: host, ver services/postal/README.md), por lo que no lo
@@ -37,6 +36,12 @@ volumes:
     external: true
   masivos-nginx-data:
     external: true
+  masivos-prometheus-data:
+    external: true
+  masivos-grafana-data:
+    external: true
+  masivos-loki-data:
+    external: true
 
 include:
   - ../../services/mariadb/docker-compose.yml
@@ -44,3 +49,6 @@ include:
   - ../../services/rabbitmq/docker-compose.yml
   - ../../services/redis/docker-compose.yml
   - ../../services/nginx/docker-compose.yml
+  - ../../services/prometheus/docker-compose.yml
+  - ../../services/grafana/docker-compose.yml
+  - ../../services/loki/docker-compose.yml

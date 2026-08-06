@@ -16,6 +16,11 @@ services:
     volumes:
       - masivos-rabbitmq-data:/var/lib/rabbitmq
       - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      # Habilita rabbitmq_prometheus (Sprint 10) ademas de rabbitmq_management
+      # (que la imagen -management ya trae activo por defecto). El plugin
+      # expone metricas nativas en formato Prometheus en el puerto 15692,
+      # solo dentro de masivos-network (no se publica al host).
+      - ./config/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     ports:
       # Panel de administracion SOLO en loopback del host, para acceso via
       # tunel SSH (ver security/ssh/README.md, AllowTcpForwarding yes).

@@ -1,0 +1,114 @@
+# services/prometheus/docker-compose.yml — Prometheus + exporters de
+# MariaDB, Postgres, Redis y Nginx. RabbitMQ no necesita exporter (plugin
+# nativo rabbitmq_prometheus, habilitado en services/rabbitmq/, Sprint 10).
+#
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/prometheus/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-prometheus-data, y que los usuarios de monitoreo de MariaDB/Postgres
+# ya existan (services/mariadb/init/01-*, services/postgres/init/01-*).
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: masivos-prometheus
+    restart: unless-stopped
+    # Alcanza los /metrics de Postal y node-exporter, ambos en
+    # network_mode: host - mismo mecanismo que Nginx usa para el panel web
+    # de Postal (Sprint 9).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - masivos-prometheus-data:/prometheus
+    ports:
+      # Solo loopback, para debugging directo via tunel SSH. El consumo
+      # normal es a traves de Grafana (masivos-network), no de este puerto.
+      - "127.0.0.1:9090:9090"
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROMETHEUS_CPU_LIMIT:-1}"
+          memory: "${PROMETHEUS_MEMORY_LIMIT:-512m}"
+        reservations:
+          memory: "${PROMETHEUS_MEMORY_RESERVATION:-128m}"
+
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: masivos-mysqld-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "${MYSQLD_EXPORTER_USER}:${MYSQLD_EXPORTER_PASSWORD}@(host.docker.internal:3306)/"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - masivos-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: masivos-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_EXPORTER_USER}:${POSTGRES_EXPORTER_PASSWORD}@masivos-postgres:5432/${POSTGRES_EXPORTER_DATABASE}?sslmode=disable"
+    networks:
+      - masivos-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: masivos-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://masivos-redis:6379"
+      REDIS_PASSWORD: "${REDIS_EXPORTER_PASSWORD}"
+    networks:
+      - masivos-network
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    container_name: masivos-nginx-exporter
+    restart: unless-stopped
+    command:
+      - "--nginx.scrape-uri=http://masivos-nginx:8080/nginx_status"
+    networks:
+      - masivos-network
+
+  # network_mode: host es el patron estandar de node-exporter para leer
+  # metricas del host sin bind-mounts complejos de /proc y /sys con
+  # remapeo de namespaces. Mismo patron ya usado por Postal (Sprint 8).
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: masivos-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/host/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-prometheus-data:
+    external: true

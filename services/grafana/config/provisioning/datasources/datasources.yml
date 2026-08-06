@@ -1,0 +1,20 @@
+# services/grafana/config/provisioning/datasources/datasources.yml
+# Provisionado automaticamente al arrancar Grafana. Sin contenido
+# especifico de entorno (las URLs son nombres de contenedor fijos dentro
+# de masivos-network) - no es una plantilla, se versiona tal cual.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://masivos-prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://masivos-loki:3100
+    editable: false

@@ -48,4 +48,4 @@ docker exec masivos-rabbitmq rabbitmqctl list_queues name messages consumers
 docker exec masivos-rabbitmq rabbitmqctl node_health_check
 ```
 
-O vía el panel de administración (ver arriba). El plugin `rabbitmq_prometheus` viene incluido en la imagen `-management` pero no está habilitado por defecto; se activará junto con `services/prometheus` (Sprint 9).
+O vía el panel de administración (ver arriba). El plugin `rabbitmq_prometheus` está habilitado (Sprint 10, `config/enabled_plugins`) y expone métricas en `http://masivos-rabbitmq:15692/metrics`, solo dentro de `masivos-network` — scrapeado por `services/prometheus/`.

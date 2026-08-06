@@ -107,6 +107,7 @@ Justificación: aislar el blast radius. Un incidente de carga o de seguridad en 
 - Todos los contenedores se resuelven entre sí por nombre (`masivos-postgres`, `masivos-redis`, etc.), sin depender de IPs.
 - Ningún servicio de datos (Postgres, RabbitMQ, Redis) publica puertos al host.
 - **Excepción: Postal (Sprint 8) no está en `masivos-network`.** Sus contenedores usan `network_mode: host`, siguiendo la plantilla oficial del proyecto — ver la nota completa en el diagrama de arquitectura, arriba.
+- **Excepción parcial: `node-exporter` (Sprint 10, dentro de `services/prometheus/`) también usa `network_mode: host`** — es el patrón estándar para exponer métricas del host (CPU, disco, memoria) sin necesitar bind-mounts complejos de `/proc`/`/sys` con namespaces remapeados. El resto de contenedores de `services/prometheus/` sí está en `masivos-network`.
 
 ## Modelo de volúmenes
 
@@ -118,8 +119,9 @@ Volúmenes Docker nombrados (no bind mounts para datos, salvo configuración):
 - `masivos-redis-data`
 - `masivos-postal-data`
 - `masivos-nginx-data`
+- `masivos-prometheus-data`, `masivos-grafana-data`, `masivos-loki-data` — añadidos en el Sprint 10
 
-Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3; `masivos-mariadb-data` añadido en el Sprint 7).
+Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3; `masivos-mariadb-data` añadido en el Sprint 7; los tres de observabilidad añadidos en el Sprint 10).
 
 **Por qué Postgres/Redis/RabbitMQ siguen aquí si Postal no los usa:** se construyeron (Sprints 4-6) siguiendo el stack originalmente solicitado, antes de verificar contra la documentación oficial de Postal que v3 no los requiere (solo MariaDB — ver [`services/mariadb/README.md`](../services/mariadb/README.md)). Se conservan como infraestructura genérica de la plataforma, disponible para necesidades futuras que no sean Postal (caché de aplicación, colas de trabajos propios, analítica), no como componentes huérfanos.
 

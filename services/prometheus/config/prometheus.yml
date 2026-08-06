@@ -1,0 +1,59 @@
+# services/prometheus/config/prometheus.yml
+# "host.docker.internal" se resuelve via extra_hosts: host-gateway (ver
+# docker-compose.yml) - necesario para scrapear los endpoints /metrics de
+# Postal, que corre en network_mode: host (ver services/postal/README.md).
+# El resto de targets se resuelve por nombre de contenedor dentro de
+# masivos-network.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: masivos
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: postal_worker
+    static_configs:
+      - targets: ["host.docker.internal:9090"]
+        labels:
+          service: postal-worker
+
+  - job_name: postal_smtp
+    static_configs:
+      - targets: ["host.docker.internal:9091"]
+        labels:
+          service: postal-smtp
+
+  - job_name: mariadb
+    static_configs:
+      - targets: ["mysqld-exporter:9104"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: rabbitmq
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["masivos-rabbitmq:15692"]
+
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+
+  - job_name: node
+    # node-exporter usa network_mode: host (igual que Postal) - se alcanza
+    # via host-gateway, no por nombre de contenedor ni "localhost" (eso
+    # solo funcionaria si Prometheus tambien estuviera en host networking).
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          service: host

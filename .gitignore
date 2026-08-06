@@ -17,9 +17,12 @@ services/nginx/secrets/*
 !services/nginx/secrets/.gitkeep
 
 # Configuracion de Nginx renderizada desde plantillas (contiene el dominio
-# real del servidor; las plantillas .conf.template si se versionan)
+# real del servidor; las plantillas .conf.template si se versionan). Los
+# archivos sin contenido especifico de dominio (00-upstreams.conf,
+# 02-status.conf) no son generados y si se versionan.
 services/nginx/conf.d/*.conf
 !services/nginx/conf.d/00-upstreams.conf
+!services/nginx/conf.d/02-status.conf
 
 # Clave de firma de Postal (secreto generado en el servidor, nunca versionado)
 services/postal/config/signing.key

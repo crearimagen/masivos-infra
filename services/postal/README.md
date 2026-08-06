@@ -77,7 +77,7 @@ docker exec masivos-postal-worker nc -z 127.0.0.1 9090 && echo "worker OK"
 docker compose --env-file .env -f docker-compose.yml logs -f
 ```
 
-Métricas vía Prometheus se añaden en `services/prometheus` (Sprint 10) — Postal expone endpoints de salud por proceso (`SMTP_SERVER_DEFAULT_HEALTH_SERVER_PORT`, `WORKER_DEFAULT_HEALTH_SERVER_PORT`) que ya están configurados en `.env.example`.
+Métricas vía Prometheus (Sprint 10): Postal expone `/metrics` en formato Prometheus nativo en `SMTP_SERVER_DEFAULT_HEALTH_SERVER_PORT` (`9091`) y `WORKER_DEFAULT_HEALTH_SERVER_PORT` (`9090`) — verificado contra [`docs.postalserver.io/features/health-metrics`](https://docs.postalserver.io/features/health-metrics/). El proceso `web` no tiene endpoint de métricas documentado. `services/prometheus/` los scrapea vía `host-gateway`, igual que Nginx alcanza el panel web — por eso ambos binds se corrigieron a `0.0.0.0` en este sprint (ver arriba).
 
 ## Riesgo conocido de primer despliegue
 

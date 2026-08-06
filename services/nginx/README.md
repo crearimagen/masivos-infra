@@ -4,7 +4,7 @@ Reverse proxy TLS-terminating y emisión de certificados Let's Encrypt (DNS-01 v
 
 ## Qué hace
 
-- Termina TLS para el panel web de Postal (Sprint 8) y, más adelante, Grafana y Uptime Kuma (Sprints 10-11).
+- Termina TLS para el panel web de Postal (Sprint 8) y Grafana (Sprint 10) — Grafana está en `masivos-network`, igual que Nginx, así que se referencia por nombre de contenedor directamente, sin `host-gateway` (a diferencia de Postal). Uptime Kuma se añade en el Sprint 11.
 - Emite y renueva certificados wildcard (`*.<DOMAIN_ROOT>`) vía DNS-01 sobre Cloudflare — no depende de que el puerto 80 esté accesible en el momento de renovación (ver [`docs/dns.md`](../../docs/dns.md)).
 - **Alcanza el panel web de Postal (`network_mode: host`, puerto `5000`) vía `extra_hosts: host.docker.internal:host-gateway`** — Nginx permanece en `masivos-network` como el resto del stack; no se propaga la excepción de red de Postal a este servicio. Ver la nota completa en `docs/architecture.md`.
 - Rate limiting básico en el login del panel de Postal (`limit_req`).

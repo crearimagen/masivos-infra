@@ -1,0 +1,45 @@
+# services/grafana/docker-compose.yml — panel de visualizacion. Datasources
+# de Prometheus y Loki provisionados automaticamente (config/provisioning/).
+# Publico solo a traves de Nginx (Sprint 9), como Postal.
+#
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/grafana/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-grafana-data, y que services/prometheus y services/loki esten
+# corriendo (los datasources fallan a resolverse si no).
+
+services:
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: masivos-grafana
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - masivos-grafana-data:/var/lib/grafana
+      - ./config/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health | grep -q '\"database\":\"ok\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "${GRAFANA_CPU_LIMIT:-1}"
+          memory: "${GRAFANA_MEMORY_LIMIT:-256m}"
+        reservations:
+          memory: "${GRAFANA_MEMORY_RESERVATION:-64m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-grafana-data:
+    external: true

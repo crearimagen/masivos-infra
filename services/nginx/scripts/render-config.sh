@@ -17,9 +17,10 @@ usage() {
 Uso: $(basename "$0")
 
 Renderiza services/nginx/conf.d/*.conf.template a *.conf sustituyendo
-POSTAL_WEB_HOSTNAME y DOMAIN_ROOT desde services/nginx/.env. Idempotente.
-No requiere --environment: opera unicamente sobre services/nginx/.env,
-que ya es especifico del servidor donde corre.
+POSTAL_WEB_HOSTNAME, GRAFANA_WEB_HOSTNAME y DOMAIN_ROOT desde
+services/nginx/.env. Idempotente. No requiere --environment: opera
+unicamente sobre services/nginx/.env, que ya es especifico del servidor
+donde corre.
 EOF
 }
 
@@ -42,6 +43,10 @@ if [[ -z "${POSTAL_WEB_HOSTNAME:-}" ]]; then
   log_error "POSTAL_WEB_HOSTNAME no esta definido en ${SERVICE_ENV_FILE}"
   exit "$EXIT_INVALID_USAGE"
 fi
+if [[ -z "${GRAFANA_WEB_HOSTNAME:-}" ]]; then
+  log_error "GRAFANA_WEB_HOSTNAME no esta definido en ${SERVICE_ENV_FILE}"
+  exit "$EXIT_INVALID_USAGE"
+fi
 if [[ -z "${DOMAIN_ROOT:-}" ]]; then
   log_error "DOMAIN_ROOT no esta definido en ${SERVICE_ENV_FILE}"
   exit "$EXIT_INVALID_USAGE"
@@ -56,6 +61,7 @@ render_template() {
   local rendered
   rendered="$(sed \
     -e "s/__POSTAL_WEB_HOSTNAME__/${POSTAL_WEB_HOSTNAME}/g" \
+    -e "s/__GRAFANA_WEB_HOSTNAME__/${GRAFANA_WEB_HOSTNAME}/g" \
     -e "s/__DOMAIN_ROOT__/${DOMAIN_ROOT}/g" \
     "$template")"
 
