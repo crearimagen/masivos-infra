@@ -1,0 +1,92 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck on every .sh file
+        run: |
+          shopt -s globstar nullglob
+          files=(**/*.sh)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No se encontraron archivos .sh"
+            exit 0
+          fi
+          echo "Verificando ${#files[@]} archivo(s):"
+          printf '  %s\n' "${files[@]}"
+          shellcheck --severity=warning "${files[@]}"
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generar .env temporales desde .env.example
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          for example in **/.env.example; do
+            dir=$(dirname "$example")
+            env_file="${dir}/.env"
+            if [ ! -f "$env_file" ]; then
+              cp "$example" "$env_file"
+              echo "Creado ${env_file} (temporal, solo para validar sintaxis)"
+            fi
+          done
+
+      - name: Validar sintaxis de cada docker-compose.yml
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          fail=0
+          for compose_file in **/docker-compose.yml; do
+            echo "::group::${compose_file}"
+            if docker compose -f "$compose_file" config --quiet; then
+              echo "OK: ${compose_file}"
+            else
+              echo "::error file=${compose_file}::docker compose config fallo"
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
+
+      - name: Limpiar .env temporales
+        if: always()
+        run: |
+          # En un checkout limpio de CI ningun .env real existe (estan en
+          # .gitignore), asi que es seguro borrar todos los que coincidan
+          # con un .env.example - son siempre los que este workflow creo.
+          shopt -s globstar nullglob
+          for example in **/.env.example; do
+            dir=$(dirname "$example")
+            rm -f "${dir}/.env"
+          done
+
+  yaml-and-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar yamllint
+        run: pip install --quiet yamllint
+
+      - name: Lint de archivos YAML
+        run: yamllint -d relaxed --no-warnings .
+
+      - name: Validar archivos JSON
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          for f in **/*.json; do
+            echo "Validando ${f}"
+            python3 -m json.tool "$f" > /dev/null
+          done

@@ -1,0 +1,51 @@
+name: Deploy
+
+# Disparo manual unicamente - un servidor de correo en produccion no debe
+# auto-desplegarse en cada push. Requiere que el servidor ya este
+# provisionado (bootstrap/hardening/docker ya ejecutados alguna vez a mano)
+# y que el repo ya este clonado ahi con cada services/<nombre>/.env y
+# environments/<env>/.env ya configurados - esos archivos nunca estan en
+# Git, CI no puede crearlos. Ver scripts/README.md.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Entorno a desplegar"
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Los "GitHub Environments" (Settings -> Environments) permiten exigir
+    # aprobacion manual antes de que este job corra, especialmente para
+    # "prod" - configuralo ahi, este workflow no lo fuerza por si mismo.
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Configurar clave SSH
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: git pull + scripts/deploy.sh --services-only en el servidor
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && git pull origin main && sudo ./scripts/deploy.sh --environment ${{ inputs.environment }} --services-only"
+
+      - name: Validar el stack tras el despliegue
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && sudo ./scripts/validate.sh --environment ${{ inputs.environment }}"
+
+      - name: Limpiar clave SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
