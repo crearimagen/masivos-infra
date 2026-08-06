@@ -1,0 +1,6 @@
+version: "3.8"
+
+services:
+  postal:
+    image: ghcr.io/postalserver/postal:latest
+    restart: unless-stopped

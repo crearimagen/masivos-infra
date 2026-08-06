@@ -1,0 +1,19 @@
+# Entornos y secretos
+.env
+*.env
+!*.env.example
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# SSL / certificados
+services/nginx/ssl/*
+!services/nginx/ssl/.gitkeep
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
