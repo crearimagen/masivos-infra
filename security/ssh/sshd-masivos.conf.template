@@ -1,0 +1,35 @@
+# Generado por security/ssh/apply-ssh-hardening.sh — NO editar a mano.
+# Drop-in de hardening SSH para Masivos.app. Se instala en
+# /etc/ssh/sshd_config.d/99-masivos-hardening.conf
+#
+# Ubuntu 24.04 incluye "Include /etc/ssh/sshd_config.d/*.conf" al inicio de
+# /etc/ssh/sshd_config, por lo que estas directivas tienen prioridad sobre
+# los valores por defecto (en sshd_config, la primera ocurrencia de cada
+# directiva es la que aplica).
+
+Port __SSH_PORT__
+Protocol 2
+
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+
+AllowUsers __DEPLOY_USER__
+
+X11Forwarding no
+AllowAgentForwarding no
+# AllowTcpForwarding se deja en "yes": es el mecanismo soportado para que un
+# operador haga "ssh -L" hacia RabbitMQ/Postgres, que intencionalmente no
+# exponen puertos al host (ver docs/architecture.md). Deshabilitarlo forzaria
+# a exponer esos servicios directamente, lo cual es peor.
+AllowTcpForwarding yes
+PermitTunnel no
+
+MaxAuthTries 3
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+LogLevel VERBOSE

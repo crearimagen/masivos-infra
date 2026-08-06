@@ -29,6 +29,7 @@ cp environments/prod/.env.example environments/prod/.env
 | `DOCKER_NETWORK_SUBNET` | Subnet fija para `masivos-network` (evita colisiones con el rango por defecto de Docker) |
 | `DEPLOY_USER` | Usuario no-root de despliegue creado por `bootstrap/users.sh` (p.ej. `deploy`) |
 | `DEPLOY_USER_SSH_PUBLIC_KEY` | Clave pública SSH que tendrá acceso como `DEPLOY_USER` |
+| `SSH_PORT` | Puerto en el que escuchará `sshd` tras `security/ssh/apply-ssh-hardening.sh` (recomendado: no estándar, p.ej. `2222`) |
 
 ## Referencia cruzada
 

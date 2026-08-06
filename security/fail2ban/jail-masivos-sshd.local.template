@@ -1,0 +1,17 @@
+# Generado por security/fail2ban/apply-fail2ban.sh — NO editar a mano.
+# Se instala en /etc/fail2ban/jail.d/masivos-sshd.local
+#
+# fail2ban carga, en orden: jail.conf, jail.d/*.conf, jail.local, jail.d/*.local.
+# Este archivo .local dentro de jail.d se carga al final y sobreescribe la
+# definicion por defecto de [sshd] que trae el paquete.
+
+[sshd]
+enabled = true
+port = __SSH_PORT__
+backend = systemd
+maxretry = 5
+findtime = 10m
+bantime = 1h
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 24h
