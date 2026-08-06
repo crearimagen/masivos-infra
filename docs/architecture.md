@@ -83,7 +83,12 @@ Postal necesita hablar SMTP crudo (protocolo L4/L7 no-HTTP) en los puertos 25, 5
 | 465 | Postal | Sí | SMTPS legado, algunos clientes lo requieren |
 | 80 | Nginx | Sí | Redirección a HTTPS + validación ACME HTTP-01 de respaldo |
 | 443 | Nginx | Sí | Único punto de entrada HTTPS |
-| 5432 (Postgres), 5672/15672 (RabbitMQ), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
+| 15672 (RabbitMQ management) | RabbitMQ | Solo `127.0.0.1` | Panel de administración, accesible únicamente vía túnel SSH (`ssh -L`) — ver [`services/rabbitmq/README.md`](../services/rabbitmq/README.md) |
+| 5432 (Postgres), 5672 (RabbitMQ AMQP), 6379 (Redis), 9090 (Prometheus), 3100 (Loki) | — | **No** | Solo accesibles dentro de `masivos-network`; nunca deben publicarse en el host en producción |
+
+### Bind a `127.0.0.1` para paneles de administración
+
+Algunos servicios internos (RabbitMQ, y potencialmente otros en el futuro) exponen un panel web de administración que un operador humano necesita ver, pero que no debe ser alcanzable desde Internet. El patrón es: publicar ese puerto **únicamente en `127.0.0.1`** (`127.0.0.1:<puerto>:<puerto>` en el `docker-compose.yml` del servicio), nunca en `0.0.0.0` ni sin especificar IP (que Docker interpreta como `0.0.0.0`). UFW nunca abre estos puertos — son inalcanzables desde fuera del propio host por definición del bind. El acceso operativo es vía `ssh -L <puerto>:127.0.0.1:<puerto>` (por eso `security/ssh/` mantiene `AllowTcpForwarding yes`, ver [`docs/security.md`](security.md)). Esto es distinto de "expuesto al host" en el sentido de la tabla anterior — ahí "Sí" significa alcanzable desde Internet a través de UFW; el bind a loopback nunca lo es.
 
 ## Modelo de entornos
 

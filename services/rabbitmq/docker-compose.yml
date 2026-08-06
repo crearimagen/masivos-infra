@@ -1,6 +1,49 @@
-version: "3.8"
+# services/rabbitmq/docker-compose.yml — servicio RabbitMQ independiente.
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/rabbitmq/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-rabbitmq-data (docker/networks.sh y docker/volumes.sh).
 
 services:
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13-management
+    container_name: masivos-rabbitmq
     restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - masivos-rabbitmq-data:/var/lib/rabbitmq
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    ports:
+      # Panel de administracion SOLO en loopback del host, para acceso via
+      # tunel SSH (ver security/ssh/README.md, AllowTcpForwarding yes).
+      # NUNCA cambiar a "0.0.0.0:15672:15672" ni a solo "15672:15672"
+      # (equivalente a 0.0.0.0) - expondria el panel de administracion a
+      # Internet. AMQP (5672) deliberadamente NO se publica: solo Postal,
+      # dentro de masivos-network, necesita hablarlo.
+      - "127.0.0.1:15672:15672"
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${RABBITMQ_CPU_LIMIT:-1}"
+          memory: "${RABBITMQ_MEMORY_LIMIT:-512m}"
+        reservations:
+          memory: "${RABBITMQ_MEMORY_RESERVATION:-256m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-rabbitmq-data:
+    external: true
