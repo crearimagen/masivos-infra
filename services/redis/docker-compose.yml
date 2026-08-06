@@ -1,6 +1,44 @@
-version: "3.8"
+# services/redis/docker-compose.yml — servicio Redis independiente.
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/redis/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-redis-data (docker/networks.sh y docker/volumes.sh).
 
 services:
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: masivos-redis
     restart: unless-stopped
+    env_file:
+      - .env
+    # REDIS_PASSWORD se lee del entorno del contenedor (inyectado por
+    # env_file) al arrancar, no se escribe en redis.conf versionado en Git.
+    command: ["sh", "-c", "exec redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - masivos-redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT:-1}"
+          memory: "${REDIS_MEMORY_LIMIT:-512m}"
+        reservations:
+          memory: "${REDIS_MEMORY_RESERVATION:-128m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-redis-data:
+    external: true
