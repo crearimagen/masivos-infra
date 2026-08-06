@@ -1,6 +1,51 @@
-version: "3.8"
+# services/postgres/docker-compose.yml — servicio Postgres independiente.
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/postgres/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-postgres-data (docker/networks.sh y docker/volumes.sh).
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-bookworm
+    container_name: masivos-postgres
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+      - "-c"
+      - "hba_file=/etc/postgresql/pg_hba.conf"
+    volumes:
+      - masivos-postgres-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-2}"
+          memory: "${POSTGRES_MEMORY_LIMIT:-1g}"
+        reservations:
+          memory: "${POSTGRES_MEMORY_RESERVATION:-256m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-postgres-data:
+    external: true
