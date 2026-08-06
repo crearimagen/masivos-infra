@@ -1,0 +1,46 @@
+# services/uptime-kuma/docker-compose.yml — monitoreo de disponibilidad
+# externo (HTTP/TCP/DNS). Publico solo a traves de Nginx (Sprint 9), como
+# Grafana. A diferencia de Postal, no necesita extra_hosts host-gateway:
+# no tiene que alcanzar nada en network_mode: host, solo hacer peticiones
+# salientes normales a los dominios publicos que se configuren como
+# monitores (ver README.md).
+#
+# Ejecutable por si solo:
+#   docker compose --env-file .env -f services/uptime-kuma/docker-compose.yml up -d
+# o como parte del stack completo via docker/compose/docker-compose.yml (include:).
+#
+# Requiere que docker/install.sh ya haya creado masivos-network y el volumen
+# masivos-uptime-kuma-data.
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: masivos-uptime-kuma
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - masivos-uptime-kuma-data:/app/data
+    networks:
+      - masivos-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${UPTIME_KUMA_CPU_LIMIT:-1}"
+          memory: "${UPTIME_KUMA_MEMORY_LIMIT:-256m}"
+        reservations:
+          memory: "${UPTIME_KUMA_MEMORY_RESERVATION:-64m}"
+
+networks:
+  masivos-network:
+    external: true
+
+volumes:
+  masivos-uptime-kuma-data:
+    external: true

@@ -16,7 +16,7 @@ Uso: $(basename "$0") --environment <dev|test|prod>
 
 Valida (sin modificar nada) que docker/install.sh se aplico
 correctamente: daemon activo, daemon.json aplicado, red
-masivos-network con la subnet esperada, los 9 volumenes nombrados, y
+masivos-network con la subnet esperada, los 10 volumenes nombrados, y
 DEPLOY_USER en el grupo docker. Exit 0 si todo pasa, 1 si algo falla.
 EOF
 }
@@ -48,6 +48,7 @@ readonly VOLUMES=(
   masivos-prometheus-data
   masivos-grafana-data
   masivos-loki-data
+  masivos-uptime-kuma-data
 )
 
 FAILURES=0

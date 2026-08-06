@@ -4,8 +4,8 @@
 # services/<nombre>/docker-compose.yml up).
 #
 # La lista de "include" crece a medida que cada servicio se completa en su
-# propio sprint. No incluir aqui un servicio cuyo docker-compose.yml todavia
-# no este implementado. uptime-kuma se agrega en el Sprint 11, cuando exista.
+# propio sprint. Con el Sprint 11 (uptime-kuma), todos los servicios de
+# services/* que pertenecen a masivos-network ya estan incluidos.
 #
 # NOTA (Sprint 9): services/postal no esta en masivos-network
 # (network_mode: host, ver services/postal/README.md), por lo que no lo
@@ -42,6 +42,8 @@ volumes:
     external: true
   masivos-loki-data:
     external: true
+  masivos-uptime-kuma-data:
+    external: true
 
 include:
   - ../../services/mariadb/docker-compose.yml
@@ -52,3 +54,4 @@ include:
   - ../../services/prometheus/docker-compose.yml
   - ../../services/grafana/docker-compose.yml
   - ../../services/loki/docker-compose.yml
+  - ../../services/uptime-kuma/docker-compose.yml

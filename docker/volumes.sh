@@ -16,7 +16,8 @@ Uso: $(basename "$0") --environment <dev|test|prod>
 Crea los volumenes Docker nombrados definidos en docs/architecture.md
 (masivos-mariadb-data, masivos-postgres-data, masivos-rabbitmq-data,
 masivos-redis-data, masivos-postal-data, masivos-nginx-data,
-masivos-prometheus-data, masivos-grafana-data, masivos-loki-data). Idempotente.
+masivos-prometheus-data, masivos-grafana-data, masivos-loki-data,
+masivos-uptime-kuma-data). Idempotente.
 EOF
 }
 
@@ -53,6 +54,7 @@ readonly VOLUMES=(
   masivos-prometheus-data
   masivos-grafana-data
   masivos-loki-data
+  masivos-uptime-kuma-data
 )
 
 main() {

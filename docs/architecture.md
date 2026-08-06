@@ -120,8 +120,9 @@ Volúmenes Docker nombrados (no bind mounts para datos, salvo configuración):
 - `masivos-postal-data`
 - `masivos-nginx-data`
 - `masivos-prometheus-data`, `masivos-grafana-data`, `masivos-loki-data` — añadidos en el Sprint 10
+- `masivos-uptime-kuma-data` — añadido en el Sprint 11
 
-Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3; `masivos-mariadb-data` añadido en el Sprint 7; los tres de observabilidad añadidos en el Sprint 10).
+Se crean de forma idempotente en `docker/volumes.sh` (Sprint 3; `masivos-mariadb-data` añadido en el Sprint 7; los tres de observabilidad añadidos en el Sprint 10; `masivos-uptime-kuma-data` añadido en el Sprint 11).
 
 **Por qué Postgres/Redis/RabbitMQ siguen aquí si Postal no los usa:** se construyeron (Sprints 4-6) siguiendo el stack originalmente solicitado, antes de verificar contra la documentación oficial de Postal que v3 no los requiere (solo MariaDB — ver [`services/mariadb/README.md`](../services/mariadb/README.md)). Se conservan como infraestructura genérica de la plataforma, disponible para necesidades futuras que no sean Postal (caché de aplicación, colas de trabajos propios, analítica), no como componentes huérfanos.
 
