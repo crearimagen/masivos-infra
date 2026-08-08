@@ -59,7 +59,8 @@ fi
 readonly CONTAINER_NAME="masivos-postgres"
 readonly RETENTION_DAYS="${POSTGRES_BACKUP_RETENTION_DAYS:-14}"
 readonly BACKUP_DIR="${REPO_ROOT}/backups/${ENVIRONMENT}/postgres"
-readonly TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+readonly TIMESTAMP
 readonly BACKUP_FILE="${BACKUP_DIR}/postgres_${POSTGRES_DB}_${TIMESTAMP}.dump"
 
 verify_container_running() {

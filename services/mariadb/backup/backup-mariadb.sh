@@ -61,7 +61,8 @@ fi
 readonly CONTAINER_NAME="masivos-mariadb"
 readonly RETENTION_DAYS="${MARIADB_BACKUP_RETENTION_DAYS:-14}"
 readonly BACKUP_DIR="${REPO_ROOT}/backups/${ENVIRONMENT}/mariadb"
-readonly TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+readonly TIMESTAMP
 readonly BACKUP_FILE="${BACKUP_DIR}/mariadb_all_${TIMESTAMP}.sql.gz"
 
 verify_container_running() {

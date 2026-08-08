@@ -75,7 +75,8 @@ if [[ -z "${POSTGRES_USER:-}" || -z "${POSTGRES_DB:-}" ]]; then
 fi
 
 readonly CONTAINER_NAME="masivos-postgres"
-readonly CONTAINER_TMP_PATH="/tmp/$(basename "$DUMP_FILE")"
+CONTAINER_TMP_PATH="/tmp/$(basename "$DUMP_FILE")"
+readonly CONTAINER_TMP_PATH
 
 verify_container_running() {
   if ! docker ps --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then

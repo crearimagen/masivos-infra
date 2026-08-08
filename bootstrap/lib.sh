@@ -9,8 +9,11 @@ fi
 
 set -Eeuo pipefail
 
+# shellcheck disable=SC2034  # usadas por los scripts que hacen 'source' de este archivo, no aqui
 readonly EXIT_OK=0
+# shellcheck disable=SC2034
 readonly EXIT_GENERAL_ERROR=1
+# shellcheck disable=SC2034
 readonly EXIT_INVALID_USAGE=2
 readonly EXIT_UNSUPPORTED_OS=3
 readonly EXIT_NOT_ROOT=4
